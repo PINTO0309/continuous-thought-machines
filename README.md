@@ -100,6 +100,14 @@ pip uninstall torch
 pip install torch --index-url https://download.pytorch.org/whl/cu121
 ```
 
+or
+
+```
+uv venv -p 3.12 .venv
+source .venv/bin/activate # Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
+```
+
 ## Model training
 Each task has its own (set of) training code. See for instance [tasks/image_classification/train.py](tasks/image_classification/train.py). We have set it up like this to ensure ease-of-use as opposed to clinical efficiency. This code is for researchers and we hope to have it shared in a way that fosters collaboration and learning. 
 
