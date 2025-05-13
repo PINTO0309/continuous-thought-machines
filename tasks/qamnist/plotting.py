@@ -43,8 +43,8 @@ def make_qamnist_gif(predictions, certainties, targets, pre_activations, post_ac
     mosaic = [['img_data', 'img_data', 'attention', 'attention', 'logits', 'logits', 'probs', 'probs'] for _ in range(2)] + \
              [['img_data', 'img_data', 'attention', 'attention', 'logits', 'logits', 'probs', 'probs'] for _ in range(2)] + \
              [['certainty', 'certainty', 'certainty', 'certainty', 'certainty', 'certainty', 'certainty', 'certainty']] + \
-             [[f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}'] for ti in range(n_neurons_to_visualise)] 
-             
+             [[f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}', f'trace_{ti}'] for ti in range(n_neurons_to_visualise)]
+
     for stepi in range(n_steps):
         fig_gif, axes_gif = plt.subplot_mosaic(mosaic=mosaic, figsize=(31*figscale*8/4, 76*figscale))
 
@@ -60,14 +60,14 @@ def make_qamnist_gif(predictions, certainties, targets, pre_activations, post_ac
         axes_gif['logits'].axis('off')
         for bar, label in zip(bars, class_labels):
             x = bar.get_x() + bar.get_width() / 2
-            axes_gif['logits'].annotate(label, xy=(x, 0), xytext=(1, 0), 
-                                            textcoords="offset points", 
+            axes_gif['logits'].annotate(label, xy=(x, 0), xytext=(1, 0),
+                                            textcoords="offset points",
                                             ha='center', va='bottom', rotation=90)
         axes_gif['logits'].set_ylim([logits_min - 0.1 * abs(logits_min), logits_max + 0.1 * abs(logits_max)])
-    
+
         # Add probability plot
         probs = softmax(these_predictions[:, stepi])
-        bars_prob = axes_gif['probs'].bar(np.arange(len(probs)), probs[sort_idxs], 
+        bars_prob = axes_gif['probs'].bar(np.arange(len(probs)), probs[sort_idxs],
                                         color=np.array(colors)[sort_idxs], width=0.9, alpha=0.5)
         axes_gif['probs'].set_title('Probabilities')
         axes_gif['probs'].axis('off')
@@ -75,7 +75,7 @@ def make_qamnist_gif(predictions, certainties, targets, pre_activations, post_ac
         for bar, label in zip(bars_prob, class_labels):
             x = bar.get_x() + bar.get_width() / 2
             axes_gif['probs'].annotate(label, xy=(x, 0), xytext=(1, 0), textcoords="offset points", ha='center', va='bottom', rotation=90)
-                                 
+
         axes_gif['probs'].set_ylim([probs_min, probs_max])
 
         # Add certainty plot
@@ -92,19 +92,19 @@ def make_qamnist_gif(predictions, certainties, targets, pre_activations, post_ac
 
             pre_activation = these_pre_acts[:, neuroni]
             post_activation = these_post_acts[:, neuroni]
-            
+
             ax_pre = ax.twinx()
-            
+
             pre_min, pre_max = np.min(pre_activation), np.max(pre_activation)
             post_min, post_max = np.min(post_activation), np.max(post_activation)
-            
-            ax_pre.plot(np.arange(n_steps), pre_activation, 
-                        color='grey', 
-                        linestyle='--', 
-                        linewidth=1, 
+
+            ax_pre.plot(np.arange(n_steps), pre_activation,
+                        color='grey',
+                        linestyle='--',
+                        linewidth=1,
                         alpha=0.4,
                         label='Pre-activation')
-            
+
             color = 'blue' if neuroni % 2 else 'red'
             ax.plot(np.arange(n_steps), post_activation,
                     color=color,
@@ -132,7 +132,7 @@ def make_qamnist_gif(predictions, certainties, targets, pre_activations, post_ac
         this_image = these_inputs[stepi].transpose(1, 2, 0)
         # this_image = (this_image - this_image.min()) / (this_image.max() - this_image.min() + 1e-8)  # Normalize to [0,1]
         axes_gif['img_data'].imshow(this_image, cmap='binary', vmin=0, vmax=1)
-        axes_gif['img_data'].grid(False) 
+        axes_gif['img_data'].grid(False)
         axes_gif['img_data'].set_xticks([])
         axes_gif['img_data'].set_yticks([])
 
@@ -169,6 +169,8 @@ def make_qamnist_gif(predictions, certainties, targets, pre_activations, post_ac
         frames.append(image_numpy)
         plt.close(fig_gif)
 
-    imageio.mimsave(filename, frames, fps=15, loop=100)
+    fps = 15
+    duration_ms = 1000 / fps
+    imageio.mimsave(filename, frames, duration=duration_ms, loop=100)
 
     pass
