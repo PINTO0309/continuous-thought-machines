@@ -117,7 +117,7 @@ if __name__=='__main__':
 
     # Hosuekeeping
     args = parse_args()
-    
+
     set_seed(args.seed)
 
     if not os.path.exists(args.log_dir): os.makedirs(args.log_dir)
@@ -129,7 +129,7 @@ if __name__=='__main__':
 
     test_sampler = QAMNISTSampler(test_data, batch_size=args.batch_size_test)
     testloader = torch.utils.data.DataLoader(test_data, num_workers=0, batch_sampler=test_sampler)
-    
+
 
     prediction_reshaper = [-1]  # Problem specific
     args.out_dims = len(class_labels)
@@ -139,7 +139,7 @@ if __name__=='__main__':
     # Python 3.x
     zip_python_code(f'{args.log_dir}/repo_state.zip')
     with open(f'{args.log_dir}/args.txt', 'w') as f:
-        print(args, file=f)  
+        print(args, file=f)
 
     # Configure device string (support MPS on macOS)
     if args.device[0] != -1:
@@ -148,7 +148,7 @@ if __name__=='__main__':
         device = 'mps'
     else:
         device = 'cpu'
-    print(f'Running model {args.model} on {device}')
+    print(f'Running model {args.model_type} on {device}')
 
     # Build model
     model = prepare_model(args, device)
@@ -157,19 +157,19 @@ if __name__=='__main__':
     pseudo_data =  train_data.__getitem__(0)
     pseudo_inputs = pseudo_data[0].unsqueeze(0).to(device)
     pseudo_z = torch.tensor(pseudo_data[1]).unsqueeze(0).unsqueeze(2).to(device)
-    model(pseudo_inputs, pseudo_z) 
-    
+    model(pseudo_inputs, pseudo_z)
+
     model.train()
 
     print(f'Total params: {sum(p.numel() for p in model.parameters())}')
-    
+
 
     # Optimizer and scheduler
-    optimizer = torch.optim.AdamW(model.parameters(), 
-                                  lr=args.lr, 
-                                  eps=1e-8, 
+    optimizer = torch.optim.AdamW(model.parameters(),
+                                  lr=args.lr,
+                                  eps=1e-8,
                                   weight_decay=args.weight_decay)
-    
+
     warmup_schedule = warmup(args.warmup_steps)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=warmup_schedule.step)
     if args.use_scheduler:
@@ -179,13 +179,13 @@ if __name__=='__main__':
             scheduler = WarmupCosineAnnealingLR(optimizer, args.warmup_steps, args.training_iterations, warmup_start_lr=1e-20, eta_min=1e-7)
         else:
             raise NotImplementedError
-        
-   
-    
+
+
+
     # Metrics tracking (I like custom)
     # Using batched estimates
     start_iter = 0  # For reloading, keep track of this (pretty tqdm stuff needs it)
-    train_losses = []  
+    train_losses = []
     test_losses = []
     train_accuracies = []  # This will be per internal tick, not so simple
     test_accuracies = []
@@ -225,11 +225,11 @@ if __name__=='__main__':
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    
-    
+
+
     # Training
     iterator = iter(trainloader)  # Not training in epochs, but rather iterations. Need to reset this from time to time
-    
+
     with tqdm(total=args.training_iterations, initial=start_iter, leave=False, position=0, dynamic_ncols=True) as pbar:
         for bi in range(start_iter, args.training_iterations):
             current_lr = optimizer.param_groups[-1]['lr']
@@ -239,7 +239,7 @@ if __name__=='__main__':
             except StopIteration:
                 iterator = iter(trainloader)
                 inputs, z, _, targets = next(iterator)
-            
+
             inputs = inputs.to(device)
             targets = targets.to(device)
             z = torch.stack(z, 1).to(device)
@@ -264,7 +264,7 @@ if __name__=='__main__':
             if bi%args.track_every==0:
                 model.eval()
                 with torch.inference_mode():
-                    
+
                     inputs, z, question_readable, targets = next(iter(testloader))
                     inputs = inputs.to(device)
                     targets = targets.to(device)
@@ -291,7 +291,7 @@ if __name__=='__main__':
                     embedding_tensor = torch.from_numpy(embedding_input).to(gif_inputs.device)
                     gif_inputs[digits_input.size(0):digits_input.size(0) + T_embed] = embedding_tensor[:T_embed]
 
-        
+
                     pbar.set_description('Tracking: Neural dynamics')
                     plot_neural_dynamics(post_activations, 100, args.log_dir, axis_snap=True)
 
@@ -312,21 +312,21 @@ if __name__=='__main__':
                     ))
                     process.start()
 
-                    
+
                     ##################################### TRAIN METRICS
                     all_predictions = []
                     all_targets = []
                     all_predictions_most_certain = []
                     all_losses = []
-                    
+
                     iters.append(bi)
                     pbar.set_description('Tracking: Computing loss and accuracy for curves')
                     with torch.inference_mode():
                         loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size_test, shuffle=True, num_workers=0)
                         with tqdm(total=len(loader), initial=0, leave=False, position=1, dynamic_ncols=True) as pbar_inner:
-                        
+
                             for inferi, (inputs, z, question_readable, targets) in enumerate(loader):
-                                
+
                                 inputs = inputs.to(device)
                                 targets = targets.to(device)
                                 z = torch.stack(z, 1).to(device)
@@ -342,7 +342,7 @@ if __name__=='__main__':
 
                                 all_predictions_most_certain.append(these_predictions_answer_steps.argmax(1)[torch.arange(these_predictions_answer_steps.size(0), device=these_predictions.device), where_most_certain].detach().cpu().numpy())
                                 all_predictions.append(these_predictions_answer_steps.argmax(1).detach().cpu().numpy())
-                                
+
                                 if args.n_test_batches!=-1 and inferi%args.n_test_batches==0 and inferi!=0 : break
                                 pbar_inner.set_description('Computing metrics for train')
                                 pbar_inner.update(1)
@@ -364,7 +364,7 @@ if __name__=='__main__':
                         loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch_size_test, shuffle=True, num_workers=0)
                         with tqdm(total=len(loader), initial=0, leave=False, position=1, dynamic_ncols=True) as pbar_inner:
                             for inferi, (inputs, z, question_readable, targets) in enumerate(loader):
-                                
+
                                 inputs = inputs.to(device)
                                 targets = targets.to(device)
                                 z = torch.stack(z, 1).to(device)
@@ -380,7 +380,7 @@ if __name__=='__main__':
 
                                 all_predictions_most_certain.append(these_predictions_answer_steps.argmax(1)[torch.arange(these_predictions_answer_steps.size(0), device=these_predictions_answer_steps.device), where_most_certain].detach().cpu().numpy())
                                 all_predictions.append(these_predictions.argmax(1).detach().cpu().numpy())
-                                
+
                                 if args.n_test_batches!=-1 and inferi%args.n_test_batches==0 and inferi!=0: break
                                 pbar_inner.set_description('Computing metrics for test')
                                 pbar_inner.update(1)
@@ -388,25 +388,25 @@ if __name__=='__main__':
                         all_predictions = np.concatenate(all_predictions)
                         all_targets = np.concatenate(all_targets)
                         all_predictions_most_certain = np.concatenate(all_predictions_most_certain)
-                        
+
                         test_accuracies.append(np.mean(all_predictions == all_targets[...,np.newaxis], axis=tuple(range(all_predictions.ndim-1))))
                         test_accuracies_most_certain.append((all_targets == all_predictions_most_certain).mean())
                         test_losses.append(np.mean(all_losses))
-                            
+
 
                         figacc = plt.figure(figsize=(10, 10))
                         axacc_train = figacc.add_subplot(211)
                         axacc_test = figacc.add_subplot(212)
                         cm = sns.color_palette("viridis", as_cmap=True)
 
-                        axacc_train.plot(iters, train_accuracies_most_certain, 'k--', alpha=0.7, label='Most certain')   
-                        axacc_test.plot(iters, test_accuracies_most_certain, 'k--', alpha=0.7, label='Most certain')        
+                        axacc_train.plot(iters, train_accuracies_most_certain, 'k--', alpha=0.7, label='Most certain')
+                        axacc_test.plot(iters, test_accuracies_most_certain, 'k--', alpha=0.7, label='Most certain')
                         axacc_train.set_title('Train')
                         axacc_test.set_title('Test')
                         axacc_train.legend(loc='lower right')
                         axacc_train.set_xlim([0, args.training_iterations])
                         axacc_test.set_xlim([0, args.training_iterations])
-                        
+
                         figacc.tight_layout()
                         figacc.savefig(f'{args.log_dir}/accuracies.png', dpi=150)
                         plt.close(figacc)
@@ -423,7 +423,7 @@ if __name__=='__main__':
                         plt.close(figloss)
 
                 model.train()
-                            
+
 
 
 
@@ -449,5 +449,5 @@ if __name__=='__main__':
                     'numpy_rng_state': np.random.get_state(),
                     'random_rng_state': random.getstate(),
                     } , f'{args.log_dir}/checkpoint_{bi}.pt')
-            
+
             pbar.update(1)
